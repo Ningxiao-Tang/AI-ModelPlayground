@@ -35,7 +35,7 @@ function createProviders(configService: ConfigService): ModelProvider[] {
   const gpt4Model =
     configService.get<string>('OPENAI_GPT4_MODEL')?.trim() ?? 'gpt-4o-mini';
   const gpt5Model =
-    configService.get<string>('OPENAI_GPT5_MODEL')?.trim() ?? 'gpt-5-preview';
+    configService.get<string>('OPENAI_GPT5_MODEL')?.trim() ?? 'gpt-4o';
 
   const client = new OpenAI({
     apiKey,
@@ -60,7 +60,7 @@ function createProviders(configService: ConfigService): ModelProvider[] {
 
 function createMockProviders(): ModelProvider[] {
   return [
-    new MockProvider('mock-gpt', 'Mock GPT 4'),
+    new MockProvider('mock-gemini', 'Mock Gemini'),
     new MockProvider('mock-claude', 'Mock Claude 3')
   ];
 }

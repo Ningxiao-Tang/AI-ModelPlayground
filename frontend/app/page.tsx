@@ -14,8 +14,10 @@ interface ModelState {
 }
 
 const AVAILABLE_MODELS: ModelOption[] = [
-  { id: 'mock-gpt', name: 'Mock GPT 4', description: 'Placeholder for OpenAI GPT-4 responses.' },
-  { id: 'mock-claude', name: 'Mock GPT 5', description: 'Placeholder for OpenAI GPT-5 responses.' }
+  //{ id: 'mock-gemini', name: 'Mock Gemini', description: 'Placeholder for Gemini responses.' },
+  //{ id: 'mock-claude', name: 'Mock Claude 3', description: 'Placeholder for Claude 3 responses.' },
+  { id: 'gpt-4', name:'OpenAI GPT-4', description:'OpenAI GPT-4'},
+  { id: 'gpt-5', name: 'OpenAI GPT-5', description:'OpenAI GPT-5'}
 ];
 
 export default function HomePage(): JSX.Element {
