@@ -37,6 +37,9 @@ function createProviders(configService: ConfigService): ModelProvider[] {
   const gpt5Model =
     configService.get<string>('OPENAI_GPT5_MODEL')?.trim() ?? 'gpt-4o';
 
+  const gpt4Pricing = getPricing(configService, 'OPENAI_GPT4');
+  const gpt5Pricing = getPricing(configService, 'OPENAI_GPT5');
+
   const client = new OpenAI({
     apiKey,
     ...(baseUrl ? { baseURL: baseUrl } : {})
@@ -47,13 +50,15 @@ function createProviders(configService: ConfigService): ModelProvider[] {
       id: 'gpt-4',
       displayName: 'OpenAI GPT-4',
       model: gpt4Model,
-      systemPrompt: configService.get<string>('OPENAI_GPT4_SYSTEM_PROMPT') ?? undefined
+      systemPrompt: configService.get<string>('OPENAI_GPT4_SYSTEM_PROMPT') ?? undefined,
+      pricing: gpt4Pricing
     }),
     new OpenAIProvider(client, {
       id: 'gpt-5',
       displayName: 'OpenAI GPT-5',
       model: gpt5Model,
-      systemPrompt: configService.get<string>('OPENAI_GPT5_SYSTEM_PROMPT') ?? undefined
+      systemPrompt: configService.get<string>('OPENAI_GPT5_SYSTEM_PROMPT') ?? undefined,
+      pricing: gpt5Pricing
     })
   ];
 }
@@ -63,4 +68,29 @@ function createMockProviders(): ModelProvider[] {
     new MockProvider('mock-gemini', 'Mock Gemini'),
     new MockProvider('mock-claude', 'Mock Claude 3')
   ];
+}
+
+function getPricing(configService: ConfigService, prefix: string) {
+  const promptCost = parseNumber(configService.get<string>(`${prefix}_PROMPT_COST_PER_1K`));
+  const completionCost = parseNumber(
+    configService.get<string>(`${prefix}_COMPLETION_COST_PER_1K`)
+  );
+
+  if (promptCost == null && completionCost == null) {
+    return undefined;
+  }
+
+  return {
+    promptCostPer1K: promptCost ?? undefined,
+    completionCostPer1K: completionCost ?? undefined
+  };
+}
+
+function parseNumber(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }

@@ -82,15 +82,40 @@ export class ProvidersService {
         if (chunk.content) {
           await this.storageService.appendModelChunk(session.id, modelId, chunk.content);
           this.streamingService.emitModelChunk(session.id, modelId, chunk.content);
+          const metrics = await this.storageService.getModelMetrics(session.id, modelId);
+          if (metrics) {
+            this.streamingService.emitModelMetrics(session.id, modelId, metrics);
+          }
+        }
+
+        if (chunk.usage) {
+          const metrics = await this.storageService.updateModelUsage(session.id, modelId, {
+            promptTokens: chunk.usage.promptTokens,
+            completionTokens: chunk.usage.completionTokens,
+            totalTokens: chunk.usage.totalTokens,
+            estimatedCostUsd: chunk.usage.estimatedCostUsd
+          });
+
+          if (metrics) {
+            this.streamingService.emitModelMetrics(session.id, modelId, metrics);
+          }
         }
       }
 
       await this.storageService.markModelAsCompleted(session.id, modelId);
+      const metrics = await this.storageService.getModelMetrics(session.id, modelId);
+      if (metrics) {
+        this.streamingService.emitModelMetrics(session.id, modelId, metrics);
+      }
       this.streamingService.emitModelStatus(session.id, modelId, 'completed');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown provider error';
       this.streamingService.emitModelError(session.id, modelId, message);
       await this.storageService.markModelAsError(session.id, modelId, message);
+      const metrics = await this.storageService.getModelMetrics(session.id, modelId);
+      if (metrics) {
+        this.streamingService.emitModelMetrics(session.id, modelId, metrics);
+      }
       throw error;
     }
   }

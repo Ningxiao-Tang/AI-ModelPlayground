@@ -10,6 +10,18 @@ export interface CreateSessionPayload {
   modelIds: string[];
 }
 
+export interface ModelMetricsPayload {
+  chunkCount: number;
+  totalChars: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  startedAt?: string;
+  completedAt?: string;
+  durationMs?: number;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
 
 export async function createSession(payload: CreateSessionPayload): Promise<SessionResponse> {
@@ -34,7 +46,8 @@ export type StreamingMessage =
   | { type: 'session.completed' }
   | { type: 'model.status'; modelId: string; status: string }
   | { type: 'model.chunk'; modelId: string; content: string }
-  | { type: 'model.error'; modelId: string; error: string };
+  | { type: 'model.error'; modelId: string; error: string }
+  | { type: 'model.metrics'; modelId: string; metrics: ModelMetricsPayload };
 
 export function openSessionStream(
   sessionId: string,

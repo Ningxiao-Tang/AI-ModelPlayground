@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ModelResponseState, SessionRecord, StoredSession } from '../session/session.types';
+import {
+  ModelMetrics,
+  ModelResponseState,
+  SessionRecord,
+  StoredSession
+} from '../session/session.types';
 
 @Injectable()
 export class StorageService {
@@ -50,20 +55,29 @@ export class StorageService {
   async markModelAsRunning(sessionId: string, modelId: string): Promise<void> {
     this.updateModel(sessionId, modelId, (modelState) => {
       modelState.status = 'running';
-      modelState.startedAt = new Date().toISOString();
+      const startedAt = new Date().toISOString();
+      modelState.metrics.startedAt = startedAt;
+      modelState.errorMessage = undefined;
     });
   }
 
   async appendModelChunk(sessionId: string, modelId: string, chunk: string): Promise<void> {
     this.updateModel(sessionId, modelId, (modelState) => {
       modelState.chunks.push(chunk);
+      modelState.metrics.chunkCount += 1;
+      modelState.metrics.totalChars += chunk.length;
     });
   }
 
   async markModelAsCompleted(sessionId: string, modelId: string): Promise<void> {
     this.updateModel(sessionId, modelId, (modelState) => {
       modelState.status = 'completed';
-      modelState.completedAt = new Date().toISOString();
+      const completedAt = new Date().toISOString();
+      modelState.metrics.completedAt = completedAt;
+      modelState.metrics.durationMs = this.computeDuration(
+        modelState.metrics.startedAt,
+        completedAt
+      );
     });
   }
 
@@ -71,8 +85,55 @@ export class StorageService {
     this.updateModel(sessionId, modelId, (modelState) => {
       modelState.status = 'error';
       modelState.errorMessage = errorMessage;
-      modelState.completedAt = new Date().toISOString();
+      const completedAt = new Date().toISOString();
+      modelState.metrics.completedAt = completedAt;
+      modelState.metrics.durationMs = this.computeDuration(
+        modelState.metrics.startedAt,
+        completedAt
+      );
     });
+  }
+
+  async updateModelUsage(
+    sessionId: string,
+    modelId: string,
+    usage: {
+      promptTokens?: number;
+      completionTokens?: number;
+      totalTokens?: number;
+      estimatedCostUsd?: number;
+    }
+  ): Promise<ModelMetrics | null> {
+    let metrics: ModelMetrics | null = null;
+    this.updateModel(sessionId, modelId, (modelState) => {
+      const totalTokens =
+        usage.totalTokens ??
+        (usage.promptTokens != null || usage.completionTokens != null
+          ? (usage.promptTokens ?? 0) + (usage.completionTokens ?? 0)
+          : undefined);
+      modelState.metrics = {
+        ...modelState.metrics,
+        ...usage,
+        totalTokens
+      };
+      metrics = this.clone(modelState.metrics);
+    });
+
+    return metrics;
+  }
+
+  async getModelMetrics(sessionId: string, modelId: string): Promise<ModelMetrics | null> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return null;
+    }
+
+    const model = session.responses[modelId];
+    if (!model) {
+      return null;
+    }
+
+    return this.clone(model.metrics);
   }
 
   private updateSession(sessionId: string, mutator: (session: StoredSession) => void): void {
@@ -105,11 +166,30 @@ export class StorageService {
     return {
       modelId,
       status: 'pending',
-      chunks: []
+      chunks: [],
+      metrics: {
+        chunkCount: 0,
+        totalChars: 0
+      }
     };
   }
 
   private clone<T>(value: T): T {
     return JSON.parse(JSON.stringify(value)) as T;
+  }
+
+  private computeDuration(startedAt?: string, completedAt?: string): number | undefined {
+    if (!startedAt || !completedAt) {
+      return undefined;
+    }
+
+    const start = new Date(startedAt).getTime();
+    const end = new Date(completedAt).getTime();
+
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      return undefined;
+    }
+
+    return Math.max(end - start, 0);
   }
 }

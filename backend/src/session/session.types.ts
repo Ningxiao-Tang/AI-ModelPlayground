@@ -10,13 +10,24 @@ export interface SessionRecord {
   updatedAt: string;
 }
 
+export interface ModelMetrics {
+  chunkCount: number;
+  totalChars: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  startedAt?: string;
+  completedAt?: string;
+  durationMs?: number;
+}
+
 export interface ModelResponseState {
   modelId: string;
   status: ModelStatus;
   chunks: string[];
+  metrics: ModelMetrics;
   errorMessage?: string;
-  startedAt?: string;
-  completedAt?: string;
 }
 
 export interface StoredSession extends SessionRecord {

@@ -17,11 +17,25 @@ export class MockProvider implements ModelProvider {
       'This is placeholder text while real provider integration is implemented.'
     ];
 
+    let totalLength = 0;
+
     for (const chunk of mockChunks) {
       await delay(100);
+      totalLength += chunk.length;
       yield { content: chunk };
     }
 
-    yield { content: '', done: true };
+    const approximateTokens = Math.ceil(totalLength / 4);
+    const promptTokens = Math.ceil(session.prompt.length / 4);
+
+    yield {
+      content: '',
+      done: true,
+      usage: {
+        promptTokens,
+        completionTokens: approximateTokens,
+        totalTokens: approximateTokens + promptTokens
+      }
+    } satisfies ProviderStreamChunk;
   }
 }

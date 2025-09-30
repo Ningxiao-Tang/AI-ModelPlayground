@@ -2,6 +2,7 @@
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import type { ModelMetricsPayload } from '../lib/api';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
@@ -17,18 +18,28 @@ const STATUS_COLORS: Record<string, string> = {
   error: '#f87171'
 };
 
+const integerFormatter = new Intl.NumberFormat('en-US');
+const costFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 6
+});
+
 export interface ModelColumnProps {
   modelId: string;
   modelName: string;
   status: string;
   chunks: string[];
   error?: string;
+  metrics: ModelMetricsPayload;
 }
 
-export function ModelColumn({ modelName, status, chunks, error }: ModelColumnProps): JSX.Element {
+export function ModelColumn({ modelName, status, chunks, error, metrics }: ModelColumnProps): JSX.Element {
   const displayStatus = STATUS_LABELS[status] ?? status;
   const statusColor = STATUS_COLORS[status] ?? '#6366f1';
   const content = chunks.join('\n');
+  const durationSeconds = metrics.durationMs != null ? metrics.durationMs / 1000 : undefined;
 
   return (
     <article
@@ -81,6 +92,50 @@ export function ModelColumn({ modelName, status, chunks, error }: ModelColumnPro
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || '*Awaiting response…*'}</ReactMarkdown>
         )}
       </section>
+      <footer
+        style={{
+          marginTop: '1rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.4rem',
+          fontSize: '0.85rem',
+          color: 'rgba(226, 232, 240, 0.75)'
+        }}
+      >
+        <span>
+          Tokens:{' '}
+          <strong>
+            {metrics.totalTokens != null ? integerFormatter.format(metrics.totalTokens) : '—'}
+            {metrics.promptTokens != null || metrics.completionTokens != null
+              ? ` (prompt ${
+                  metrics.promptTokens != null
+                    ? integerFormatter.format(metrics.promptTokens)
+                    : '—'
+                }, completion ${
+                  metrics.completionTokens != null
+                    ? integerFormatter.format(metrics.completionTokens)
+                    : '—'
+                })`
+              : ''}
+          </strong>
+        </span>
+        <span>
+          Length:{' '}
+          <strong>{integerFormatter.format(metrics.totalChars)}</strong> chars · Chunks:{' '}
+          <strong>{integerFormatter.format(metrics.chunkCount)}</strong>
+        </span>
+        <span>
+          Speed:{' '}
+          <strong>
+            {durationSeconds != null ? `${durationSeconds.toFixed(2)}s` : '—'}
+          </strong>
+        </span>
+        {metrics.estimatedCostUsd != null ? (
+          <span>
+            Est. cost: <strong>{costFormatter.format(metrics.estimatedCostUsd)}</strong>
+          </span>
+        ) : null}
+      </footer>
     </article>
   );
 }

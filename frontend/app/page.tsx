@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ModelColumn } from '../components/model-column';
 import { ModelOption, PromptForm } from '../components/prompt-form';
-import { CreateSessionPayload, createSession, openSessionStream, StreamingMessage } from '../lib/api';
+import {
+  CreateSessionPayload,
+  createSession,
+  ModelMetricsPayload,
+  openSessionStream,
+  StreamingMessage
+} from '../lib/api';
 
 interface ModelState {
   id: string;
@@ -11,13 +17,30 @@ interface ModelState {
   status: string;
   chunks: string[];
   error?: string;
+  metrics: ModelMetrics;
+}
+
+type ModelMetrics = ModelMetricsPayload;
+
+function createInitialMetrics(): ModelMetrics {
+  return {
+    chunkCount: 0,
+    totalChars: 0,
+    promptTokens: undefined,
+    completionTokens: undefined,
+    totalTokens: undefined,
+    estimatedCostUsd: undefined,
+    startedAt: undefined,
+    completedAt: undefined,
+    durationMs: undefined
+  };
 }
 
 const AVAILABLE_MODELS: ModelOption[] = [
-  //{ id: 'mock-gemini', name: 'Mock Gemini', description: 'Placeholder for Gemini responses.' },
-  //{ id: 'mock-claude', name: 'Mock Claude 3', description: 'Placeholder for Claude 3 responses.' },
-  { id: 'gpt-4', name:'OpenAI GPT-4', description:'OpenAI GPT-4'},
-  { id: 'gpt-5', name: 'OpenAI GPT-5', description:'OpenAI GPT-5'}
+  // { id: 'mock-gemini', name: 'Mock Gemini', description: 'Placeholder for Gemini responses.' },
+  // { id: 'mock-claude', name: 'Mock Claude 3', description: 'Placeholder for Claude 3 responses.' },
+  { id: 'gpt-4', name: 'OpenAI GPT-4', description: 'OpenAI GPT-4' },
+  { id: 'gpt-5', name: 'OpenAI GPT-5', description: 'OpenAI GPT-5' }
 ];
 
 export default function HomePage(): JSX.Element {
@@ -28,7 +51,8 @@ export default function HomePage(): JSX.Element {
       name: model.name,
       status: 'pending',
       chunks: [],
-      error: undefined
+      error: undefined,
+      metrics: createInitialMetrics()
     }))
   );
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -52,7 +76,8 @@ export default function HomePage(): JSX.Element {
           name,
           status: 'pending',
           chunks: [],
-          error: undefined
+          error: undefined,
+          metrics: createInitialMetrics()
         } satisfies ModelState;
       })
     );
@@ -96,6 +121,18 @@ export default function HomePage(): JSX.Element {
                   ...model,
                   status: 'error',
                   error: message.error
+                }
+              : model
+          );
+        case 'model.metrics':
+          return current.map((model) =>
+            model.id === message.modelId
+              ? {
+                  ...model,
+                  metrics: {
+                    ...model.metrics,
+                    ...message.metrics
+                  }
                 }
               : model
           );
@@ -219,6 +256,7 @@ export default function HomePage(): JSX.Element {
             status={model.status}
             chunks={model.chunks}
             error={model.error}
+            metrics={model.metrics}
           />
         ))}
       </section>
