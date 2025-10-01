@@ -13,8 +13,9 @@ async function bootstrap(): Promise<void> {
   );
 
   const port = process.env.PORT ?? 3001;
-  await app.listen(port);
-  Logger.log(`🚀 AI Model Playground backend running on http://localhost:${port}`);
+  const host = '0.0.0.0';
+  await app.listen(port, host);
+  Logger.log(`🚀 AI Model Playground backend running on http://${host}:${port}`);
 }
 
 bootstrap().catch((error) => {
